@@ -1,102 +1,135 @@
 package com.placement.service;
 
+import com.placement.db.DatabaseConnection;
 import com.placement.model.Student;
+import java.sql.*;
 import java.util.ArrayList;
 
 public class StudentService {
 
-    // This is our "database" for now — stores all students in memory
-    // ArrayList<Student> means: a list that only holds Student objects
-    private ArrayList<Student> studentList = new ArrayList<>();
 
-    // We use this to auto-generate IDs: 1, 2, 3, 4...
-    private int idCounter = 1;
-
-
-    // ─────────────────────────────────────────
-    // ADD STUDENT
-    // ─────────────────────────────────────────
     public void addStudent(String name, String email, double cgpa, String branch) {
 
-        // Create a new Student object using the data passed in
-        Student newStudent = new Student(idCounter, name, email, cgpa, branch);
 
-        // Add it to our list
-        studentList.add(newStudent);
-
-        // Increase counter so next student gets a different ID
-        idCounter++;
-
-        System.out.println("✅ Student added successfully! ID assigned: " + newStudent.studentId);
-    }
+        String sql = "INSERT INTO students (name, email, cgpa, branch) VALUES (?, ?, ?, ?)";
 
 
-    // ─────────────────────────────────────────
-    // VIEW ALL STUDENTS
-    // ─────────────────────────────────────────
-    public void viewAllStudents() {
-
-        // Check if the list is empty first
-        if (studentList.isEmpty()) {
-            System.out.println("⚠️  No students found. Please add students first.");
-            return; // Stop the method here, don't go further
-        }
-
-        System.out.println("\n========== ALL STUDENTS ==========");
-
-        // This loop goes through every student in the list one by one
-        // "Student s" means: for each item in studentList, call it "s"
-        for (Student s : studentList) {
-            s.displayStudent(); // Call the display method we wrote earlier
-        }
-    }
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
 
-    // ─────────────────────────────────────────
-    // DELETE STUDENT
-    // ─────────────────────────────────────────
-    public void deleteStudent(int studentId) {
+            stmt.setString(1, name);
+            stmt.setString(2, email);
+            stmt.setDouble(3, cgpa);
+            stmt.setString(4, branch);
 
-        // We'll search the list manually using a loop
-        Student foundStudent = null;
 
-        for (Student s : studentList) {
-            if (s.studentId == studentId) {
-                foundStudent = s; // Found it!
-                break;            // Stop searching
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("✅ Student added successfully!");
+            }
+
+        } catch (SQLException e) {
+            // Check for duplicate email error specifically
+            if (e.getErrorCode() == 1062) {
+                System.out.println(" Email already exists! Use a different email.");
+            } else {
+                System.out.println("Error adding student: " + e.getMessage());
             }
         }
+    }
 
-        // If we found the student, remove them
-        if (foundStudent != null) {
-            studentList.remove(foundStudent);
-            System.out.println("🗑️  Student with ID " + studentId + " deleted successfully.");
-        } else {
-            System.out.println("❌ No student found with ID: " + studentId);
+    public void viewAllStudents() {
+
+        String sql = "SELECT * FROM students";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            // ResultSet is like a table of results
+            // rs.next() moves to the next row — returns false when no more rows
+            boolean hasData = false;
+
+            System.out.println("\n========== ALL STUDENTS ==========");
+
+            while (rs.next()) {
+                hasData = true;
+
+                // Read each column by its name
+                int    id     = rs.getInt("student_id");
+                String name   = rs.getString("name");
+                String email  = rs.getString("email");
+                double cgpa   = rs.getDouble("cgpa");
+                String branch = rs.getString("branch");
+
+                // Print neatly
+                System.out.println("-----------------------------");
+                System.out.println("ID     : " + id);
+                System.out.println("Name   : " + name);
+                System.out.println("Email  : " + email);
+                System.out.println("CGPA   : " + cgpa);
+                System.out.println("Branch : " + branch);
+            }
+
+            System.out.println("-----------------------------");
+
+            if (!hasData) {
+                System.out.println("⚠  No students found in database.");
+            }
+
+        } catch (SQLException e) {
+            System.out.println(" Error fetching students: " + e.getMessage());
         }
     }
 
-
-    // ─────────────────────────────────────────
-    // UPDATE STUDENT
-    // ─────────────────────────────────────────
     public void updateStudent(int studentId, String newName, String newEmail,
                               double newCgpa, String newBranch) {
 
-        for (Student s : studentList) {
-            if (s.studentId == studentId) {
+        String sql = "UPDATE students SET name=?, email=?, cgpa=?, branch=? WHERE student_id=?";
 
-                // Update each field of the found student
-                s.name   = newName;
-                s.email  = newEmail;
-                s.cgpa   = newCgpa;
-                s.branch = newBranch;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-                System.out.println("✏️  Student updated successfully!");
-                return; // Done, exit the method
+            stmt.setString(1, newName);
+            stmt.setString(2, newEmail);
+            stmt.setDouble(3, newCgpa);
+            stmt.setString(4, newBranch);
+            stmt.setInt(5, studentId);  // The WHERE condition
+
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("  Student updated successfully!");
+            } else {
+                System.out.println(" No student found with ID: " + studentId);
             }
-        }
 
-        System.out.println(" No student found with ID: " + studentId);
+        } catch (SQLException e) {
+            System.out.println(" Error updating student: " + e.getMessage());
+        }
+    }
+
+    public void deleteStudent(int studentId) {
+
+        String sql = "DELETE FROM students WHERE student_id=?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, studentId);
+
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("  Student deleted successfully!");
+            } else {
+                System.out.println(" No student found with ID: " + studentId);
+            }
+
+        } catch (SQLException e) {
+            System.out.println(" Error deleting student: " + e.getMessage());
+        }
     }
 }
