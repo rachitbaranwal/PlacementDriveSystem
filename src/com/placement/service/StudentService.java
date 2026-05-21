@@ -2,6 +2,7 @@ package com.placement.service;
 
 import com.placement.db.DatabaseConnection;
 import com.placement.model.Student;
+import com.placement.util.Validator;
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -10,32 +11,36 @@ public class StudentService {
 
     public void addStudent(String name, String email, double cgpa, String branch) {
 
+        // Validate all inputs BEFORE touching the database
+        if (!Validator.isValidName(name))   return;
+        if (!Validator.isValidEmail(email)) return;
+        if (!Validator.isValidCgpa(cgpa))   return;
+
+        if (branch == null || branch.trim().isEmpty()) {
+            System.out.println(" Branch cannot be empty!");
+            return;
+        }
 
         String sql = "INSERT INTO students (name, email, cgpa, branch) VALUES (?, ?, ?, ?)";
-
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-
-            stmt.setString(1, name);
-            stmt.setString(2, email);
+            stmt.setString(1, name.trim());
+            stmt.setString(2, email.trim());
             stmt.setDouble(3, cgpa);
-            stmt.setString(4, branch);
+            stmt.setString(4, branch.trim());
 
-
-            int rowsAffected = stmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                System.out.println("✅ Student added successfully!");
+            int rows = stmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Student added successfully!");
             }
 
         } catch (SQLException e) {
-            // Check for duplicate email error specifically
             if (e.getErrorCode() == 1062) {
                 System.out.println(" Email already exists! Use a different email.");
             } else {
-                System.out.println("Error adding student: " + e.getMessage());
+                System.out.println(" Error adding student: " + e.getMessage());
             }
         }
     }

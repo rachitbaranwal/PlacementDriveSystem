@@ -1,29 +1,40 @@
 package com.placement.service;
 
 import com.placement.db.DatabaseConnection;
+import com.placement.util.Validator;
 import java.sql.*;
 
 public class CompanyService {
 
     public void addCompany(String name, double minCgpa, String role, double ctc) {
 
+        // Validate inputs first
+        if (!Validator.isValidName(name))    return;
+        if (!Validator.isValidCgpa(minCgpa)) return;
+        if (!Validator.isValidCtc(ctc))      return;
+
+        if (role == null || role.trim().isEmpty()) {
+            System.out.println(" Role cannot be empty!");
+            return;
+        }
+
         String sql = "INSERT INTO companies (company_name, min_cgpa, role, ctc) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, name);
+            stmt.setString(1, name.trim());
             stmt.setDouble(2, minCgpa);
-            stmt.setString(3, role);
+            stmt.setString(3, role.trim());
             stmt.setDouble(4, ctc);
 
             int rows = stmt.executeUpdate();
             if (rows > 0) {
-                System.out.println("Company added successfully!");
+                System.out.println(" Company added successfully!");
             }
 
         } catch (SQLException e) {
-            System.out.println("Error adding company: " + e.getMessage());
+            System.out.println(" Error adding company: " + e.getMessage());
         }
     }
 

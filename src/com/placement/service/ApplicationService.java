@@ -2,6 +2,7 @@ package com.placement.service;
 
 import com.placement.db.DatabaseConnection;
 import java.sql.*;
+import com.placement.util.Validator;
 
 public class ApplicationService {
 
@@ -85,6 +86,9 @@ public class ApplicationService {
 
     public void updateApplicationStatus(int applicationId, String newStatus) {
 
+        // Validate status before updating
+        if (!Validator.isValidStatus(newStatus)) return;
+
         String sql = "UPDATE applications SET status=? WHERE application_id=?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -95,7 +99,7 @@ public class ApplicationService {
 
             int rows = stmt.executeUpdate();
             if (rows > 0) {
-                System.out.println(" Application status updated to: " + newStatus);
+                System.out.println(" Status updated to: " + newStatus);
             } else {
                 System.out.println(" No application found with ID: " + applicationId);
             }
@@ -104,7 +108,6 @@ public class ApplicationService {
             System.out.println(" Error updating status: " + e.getMessage());
         }
     }
-
 
     private boolean studentExists(int studentId) {
         String sql = "SELECT student_id FROM students WHERE student_id=?";
